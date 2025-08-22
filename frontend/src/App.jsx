@@ -11,7 +11,7 @@ import Signup from './components/auth/Signup';
 import AuthSuccess from './components/auth/AuthSuccess';
 
 // Main Components
-import Dashboard from './components/Dashboard';
+import Dashboard from './Dashboard';
 
 // Feature Components (your existing components)
 import TTSReader from './TTSReader';

@@ -8,6 +8,11 @@ export const firebaseAuthService = {
   // Sign in with Google using Firebase
   signInWithGoogle: async () => {
     try {
+      // Configure provider with custom parameters to handle CORP issues
+      googleProvider.setCustomParameters({
+        prompt: 'select_account'
+      });
+      
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       
@@ -26,9 +31,28 @@ export const firebaseAuthService = {
       };
     } catch (error) {
       console.error('Google sign-in error:', error);
+      
+      // Handle specific Firebase Auth errors
+      if (error.code === 'auth/popup-blocked') {
+        return {
+          success: false,
+          error: 'Popup was blocked by browser. Please allow popups and try again.'
+        };
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        return {
+          success: false,
+          error: 'Login was cancelled.'
+        };
+      } else if (error.code === 'auth/network-request-failed') {
+        return {
+          success: false,
+          error: 'Network error. Please check your connection and try again.'
+        };
+      }
+      
       return {
         success: false,
-        error: error.message
+        error: error.message || 'Google sign-in failed'
       };
     }
   },

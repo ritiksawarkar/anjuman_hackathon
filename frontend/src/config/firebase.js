@@ -22,5 +22,10 @@ export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 googleProvider.addScope('email');
 googleProvider.addScope('profile');
+// Set custom parameters to handle CORP policy issues
+googleProvider.setCustomParameters({
+  prompt: 'select_account',
+  access_type: 'offline'
+});
 
 export default app;

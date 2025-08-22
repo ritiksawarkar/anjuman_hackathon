@@ -15,13 +15,28 @@ const authReducer = (state, action) => {
   switch (action.type) {
     case 'LOGIN_START':
     case 'SIGNUP_START':
-  // ...existing code...
+      return {
+        ...state,
+        loading: true,
+        error: null
+      };
     case 'LOGIN_SUCCESS':
     case 'SIGNUP_SUCCESS':
-  // ...existing code...
+      return {
+        ...state,
+        loading: false,
+        isAuthenticated: true,
+        user: action.payload.user,
+        token: action.payload.token,
+        error: null
+      };
     case 'LOGIN_FAILURE':
     case 'SIGNUP_FAILURE':
-  // ...existing code...
+      return {
+        ...state,
+        loading: false,
+        error: action.payload
+      };
     case 'LOGOUT':
       return {
         ...state,

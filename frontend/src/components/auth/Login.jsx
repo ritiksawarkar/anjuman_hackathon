@@ -36,8 +36,18 @@ const Login = () => {
     }
   };
 
-  const handleGoogleLogin = () => {
-    loginWithGoogle();
+  const handleGoogleLogin = async () => {
+    try {
+      const result = await loginWithGoogle();
+      if (result.success) {
+        navigate('/dashboard');
+      } else {
+        console.error('Google login failed:', result.error);
+        // Don't show error to user, just fail silently or show generic message
+      }
+    } catch (error) {
+      console.error('Google login error:', error);
+    }
   };
 
   return (

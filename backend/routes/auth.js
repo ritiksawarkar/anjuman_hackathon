@@ -89,37 +89,6 @@ router.post('/signup', validateSignup, handleValidationErrors, async (req, res) 
 // ...existing code...
 
 // ...existing code...
-], handleValidationErrors, async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: 'User not found' });
-    }
-
-    if (user.isVerified) {
-      return res.status(400).json({ message: 'User is already verified' });
-    }
-
-    // Generate and save new OTP
-    const otp = user.generateOTP();
-    await user.save();
-
-    // Send OTP email
-    const emailResult = await sendOTPEmail(email, otp, user.name);
-    
-    if (!emailResult.success) {
-      return res.status(500).json({ message: 'Failed to send OTP email' });
-    }
-
-    res.json({ message: 'OTP resent successfully' });
-
-  } catch (error) {
-    console.error('Resend OTP error:', error);
-    res.status(500).json({ message: 'Server error while resending OTP' });
-  }
-});
 
 // @route   POST /api/auth/login
 // @desc    Login user
@@ -140,20 +109,7 @@ router.post('/login', validateLogin, handleValidationErrors, async (req, res) =>
       return res.status(400).json({ message: 'Invalid email or password' });
     }
 
-    // Check if user is verified
-    if (!user.isVerified) {
-      // Generate and send new OTP
-      const otp = user.generateOTP();
-      await user.save();
-      
-      await sendOTPEmail(email, otp, user.name);
-      
-      return res.status(400).json({ 
-        message: 'Please verify your email first. A new OTP has been sent.',
-        needsVerification: true,
-        email: email
-      });
-    }
+  // ...existing code...
 
     // Generate token
     const token = generateToken(user._id);
@@ -288,8 +244,9 @@ router.post('/firebase-login', [
   try {
     // Check if Firebase Admin is initialized
     if (!firebaseAdmin) {
+      console.log('Firebase Admin not initialized, skipping Firebase login');
       return res.status(503).json({ 
-        message: 'Firebase authentication is not configured on the server' 
+        message: 'Firebase authentication is not configured on the server. Please contact administrator.' 
       });
     }
 
@@ -359,39 +316,6 @@ router.post('/firebase-login', [
   }
 });
 
-// @route   POST /api/auth/test-email
-// @desc    Test email sending functionality
-// @access  Public
-router.post('/test-email', async (req, res) => {
-  try {
-    const { email, name } = req.body;
-    
-    if (!email || !name) {
-      return res.status(400).json({ message: 'Email and name are required' });
-    }
-
-    // Generate test OTP
-    const testOTP = '123456';
-    
-    // Send test OTP email
-    const emailResult = await sendOTPEmail(email, testOTP, name);
-    
-    if (emailResult.success) {
-      res.json({ 
-        message: 'Test email sent successfully',
-        messageId: emailResult.messageId
-      });
-    } else {
-      res.status(500).json({ 
-        message: 'Failed to send test email',
-        error: emailResult.error
-      });
-    }
-
-  } catch (error) {
-    console.error('Test email error:', error);
-    res.status(500).json({ message: 'Server error during test email' });
-  }
-});
+// ...existing code...
 
 module.exports = router;

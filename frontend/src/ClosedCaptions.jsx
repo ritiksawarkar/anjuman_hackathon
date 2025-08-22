@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import Layout from './components/common/Layout';
 
 const captionsDemo = [
   {
@@ -23,11 +24,12 @@ const ClosedCaptions = () => {
   };
 
   return (
-    <div className="max-w-xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow p-6 mt-8">
-      <h2 className="text-xl font-bold mb-4 text-blue-700 dark:text-blue-300">Closed Captions & Subtitles</h2>
-      <video
-        ref={videoRef}
-        src={captionsDemo[0].video}
+    <Layout>
+      <div className="max-w-xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow p-6 mt-8">
+        <h2 className="text-xl font-bold mb-4 text-blue-700 dark:text-blue-300">Closed Captions & Subtitles</h2>
+        <video
+          ref={videoRef}
+          src={captionsDemo[0].video}
         controls
         className="w-full rounded mb-2"
         onTimeUpdate={handleTimeUpdate}
@@ -39,6 +41,7 @@ const ClosedCaptions = () => {
         Example of custom closed captions. For real use, add .vtt or .srt files or use AI for auto-captioning.
       </p>
     </div>
+    </Layout>
   );
 };
 

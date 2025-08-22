@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Blue Assistive Speech Tools</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --app-blue-100: #e8f1ff;
+            --app-blue-200: #d6e7ff;
+            --app-blue-400: #5aa0ff;
+            --app-blue-600: #0d6efd; 
+            --app-blue-800: #083f99;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(180deg, var(--app-blue-100) 0%, #f6f9ff 100%);
+        }
+
+        .navbar {
+            background: linear-gradient(90deg, var(--app-blue-600), var(--app-blue-800));
+        }
+
+        .card {
+            border: 1px solid rgba(13, 110, 253, 0.15);
+            box-shadow: 0 0.25rem 1rem rgba(13, 110, 253, 0.08);
+        }
+
+        .badge-soft {
+            background-color: rgba(13, 110, 253, 0.12);
+            color: var(--app-blue-800);
+        }
+
+        .captions-box {
+            min-height: 150px;
+            max-height: 260px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: .75rem;
+        }
+
+        @media (min-width: 768px) {
+            .controls-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        /* High contrast mode */
+        .high-contrast {
+            background: #000 !important;
+            color: #ff0 !important;
+        }
+        .high-contrast .navbar {
+            background: #000 !important;
+            border-bottom: 2px solid #ff0;
+        }
+        .high-contrast .card {
+            background: #000 !important;
+            color: #ff0 !important;
+            border: 1px solid #ff0 !important;
+            box-shadow: none !important;
+        }
+        .high-contrast .form-label, .high-contrast .form-check-label {
+            color: #ff0 !important;
+        }
+        .high-contrast .btn-primary {
+            background: #ff0 !important;
+            border-color: #ff0 !important;
+            color: #000 !important;
+        }
+        .high-contrast .btn-outline-primary {
+            border-color: #ff0 !important;
+            color: #ff0 !important;
+        }
+        .high-contrast .btn-outline-primary:hover {
+            background: #ff0 !important;
+            color: #000 !important;
+        }
+        .high-contrast .form-control, .high-contrast .form-select {
+            background: #111 !important;
+            color: #ff0 !important;
+            border-color: #ff0 !important;
+        }
+        .high-contrast .alert {
+            background: #111 !important;
+            border-color: #ff0 !important;
+            color: #ff0 !important;
+        }
+        .high-contrast .badge {
+            background: #ff0 !important;
+            color: #000 !important;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+                <span class="badge rounded-pill bg-warning text-dark">v1</span>
+                <strong>Blue Assistive Speech Tools</strong>
+            </a>
+            <div>
+                <button id="toggleContrastBtn" class="btn btn-outline-light btn-sm" type="button">🌓 High Contrast</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container pb-5">
+        <div class="row g-4">
+            <div class="col-12">
+                <div id="supportBanner" class="alert alert-info d-flex align-items-center" role="alert">
+                    <div class="me-2">ℹ</div>
+                    <div>
+                        <span class="me-2">Checking browser support for speech features…</span>
+                        <span class="badge rounded-pill text-bg-primary">Blue Theme</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-lg-6">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Text → Speech</h5>
+                            <span class="badge badge-soft">Speak your text aloud</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="text" class="form-label">Enter text</label>
+                            <textarea id="text" class="form-control" rows="5" placeholder="Type something to read aloud…">Welcome to Blue Assistive Speech Tools. This application helps with text to speech and speech to text conversion.</textarea>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-12 col-md-6">
+                                <label for="voiceSelect" class="form-label">Voice</label>
+                                <select id="voiceSelect" class="form-select"></select>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label for="langSelectTTS" class="form-label">Language</label>
+                                <select id="langSelectTTS" class="form-select">
+                                    <option value="">Auto (match voice)</option>
+                                    <option value="en-US">English (US)</option>
+                                    <option value="en-GB">English (UK)</option>
+                                    <option value="es-ES">Español (España)</option>
+                                    <option value="fr-FR">Français</option>
+                                    <option value="de-DE">Deutsch</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 controls-grid">
+                            <div>
+                                <label for="rate" class="form-label">Rate <span id="rateVal" class="ms-1 badge text-bg-light">1.0</span></label>
+                                <input id="rate" type="range" class="form-range" min="0.5" max="2" step="0.1" value="1">
+                            </div>
+                            <div>
+                                <label for="pitch" class="form-label">Pitch <span id="pitchVal" class="ms-1 badge text-bg-light">1.0</span></label>
+                                <input id="pitch" type="range" class="form-range" min="0" max="2" step="0.1" value="1">
+                            </div>
+                            <div>
+                                <label for="volume" class="form-label">Volume <span id="volumeVal" class="ms-1 badge text-bg-light">1.0</span></label>
+                                <input id="volume" type="range" class="form-range" min="0" max="1" step="0.1" value="1">
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+                            <button id="speakBtn" class="btn btn-primary">
+                                <i class="fas fa-play me-1"></i> Read Aloud
+                            </button>
+                            <button id="pauseResumeBtn" class="btn btn-outline-primary" disabled>
+                                <i class="fas fa-pause me-1"></i> Pause
+                            </button>
+                            <button id="stopBtn" class="btn btn-outline-primary" disabled>
+                                <i class="fas fa-stop me-1"></i> Stop
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-lg-6">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Speech → Captions</h5>
+                            <span class="badge badge-soft">Live transcription</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-12 col-md-6">
+                                <label for="langSelectSTT" class="form-label">Recognition language</label>
+                                <select id="langSelectSTT" class="form-select">
+                                    <option value="en-US" selected>English (US)</option>
+                                    <option value="en-GB">English (UK)</option>
+                                    <option value="es-ES">Español (España)</option>
+                                    <option value="fr-FR">Français</option>
+                                    <option value="de-DE">Deutsch</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="interimToggle" checked>
+                                    <label class="form-check-label" for="interimToggle">Show interim results</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2 my-3">
+                            <button id="startCaptionsBtn" class="btn btn-primary">
+                                <i class="fas fa-microphone me-1"></i> Start Captions
+                            </button>
+                            <button id="stopCaptionsBtn" class="btn btn-outline-primary" disabled>
+                                <i class="fas fa-stop me-1"></i> Stop
+                            </button>
+                            <button id="clearCaptionsBtn" class="btn btn-outline-primary">
+                                <i class="fas fa-broom me-1"></i> Clear
+                            </button>
+                        </div>
+
+                        <div id="captions" class="captions-box form-control" aria-live="polite"></div>
+
+                        <div id="sttSupport" class="alert alert-warning d-none mt-3" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Your browser does not support Speech Recognition. Try Chrome on desktop.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="container small text-muted pb-4">
+        <hr>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <span>Built with</span>
+            <span class="badge rounded-pill text-bg-primary">Bootstrap 5</span>
+            <span class="badge rounded-pill text-bg-primary">Web Speech API</span>
+            <span class="ms-auto">Accessibility matters</span>
+        </div>
+    </footer>
+
+    <script>
+        (function () {
+            'use strict';
+            
+            const synth = window.speechSynthesis;
+            const supportsTTS = !!synth;
+            const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const supportsSTT = !!Recognition;
+
+            const supportBanner = document.getElementById('supportBanner');
+            if (supportsTTS && supportsSTT) {
+                supportBanner.classList.remove('alert-info');
+                supportBanner.classList.add('alert-success');
+                supportBanner.innerHTML = '<div class="me-2">✅</div><div>Speech Synthesis and Recognition are supported in your browser.</div>';
+            } else if (supportsTTS || supportsSTT) {
+                supportBanner.classList.remove('alert-info');
+                supportBanner.classList.add('alert-warning');
+                supportBanner.innerHTML = '<div class="me-2">⚠</div><div>' + 
+                    (supportsTTS ? 'Speech Synthesis is supported.' : 'Speech Synthesis is not supported.') + ' ' + 
+                    (supportsSTT ? 'Speech Recognition is supported.' : 'Speech Recognition is not supported.') + '</div>';
+            } else {
+                supportBanner.classList.remove('alert-info');
+                supportBanner.classList.add('alert-danger');
+                supportBanner.innerHTML = '<div class="me-2">⛔</div><div>Your browser does not support Web Speech features.</div>';
+            }
+
+            // High contrast toggle
+            document.getElementById('toggleContrastBtn').addEventListener('click', function () {
+                document.body.classList.toggle('high-contrast');
+                this.textContent = document.body.classList.contains('high-contrast') ? '🌞 Normal Mode' : '🌓 High Contrast';
+            });
+
+            // TTS controls
+            const textArea = document.getElementById('text');
+            const voiceSelect = document.getElementById('voiceSelect');
+            const langSelectTTS = document.getElementById('langSelectTTS');
+            const rate = document.getElementById('rate');
+            const pitch = document.getElementById('pitch');
+            const volume = document.getElementById('volume');
+            const rateVal = document.getElementById('rateVal');
+            const pitchVal = document.getElementById('pitchVal');
+            const volumeVal = document.getElementById('volumeVal');
+            const speakBtn = document.getElementById('speakBtn');
+            const pauseResumeBtn = document.getElementById('pauseResumeBtn');
+            const stopBtn = document.getElementById('stopBtn');
+
+            let voices = [];
+            let currentUtterance = null;
+
+            function updateRangeLabels() {
+                rateVal.textContent = Number(rate.value).toFixed(1);
+                pitchVal.textContent = Number(pitch.value).toFixed(1);
+                volumeVal.textContent = Number(volume.value).toFixed(1);
+            }
+            
+            rate.addEventListener('input', updateRangeLabels);
+            pitch.addEventListener('input', updateRangeLabels);
+            volume.addEventListener('input', updateRangeLabels);
+            updateRangeLabels();
+
+            function populateVoices() {
+                if (!supportsTTS) return;
+                
+                voices = synth.getVoices().sort(function (a, b) { 
+                    return a.name.localeCompare(b.name); 
+                });
+                
+                voiceSelect.innerHTML = '';
+                
+                voices.forEach(function (voice, index) {
+                    const option = document.createElement('option');
+                    option.value = String(index);
+                    option.textContent = voice.name + ' (' + voice.lang + ')' + (voice.default ? ' — default' : '');
+                    voiceSelect.appendChild(option);
+                });
+                
+                const defaultIndex = voices.findIndex(function (v) { return v.default; });
+                if (defaultIndex >= 0) {
+                    voiceSelect.value = String(defaultIndex);
+                }
+            }
+
+            if (supportsTTS) {
+                populateVoices();
+                if (typeof synth.onvoiceschanged !== 'undefined') {
+                    synth.onvoiceschanged = populateVoices;
+                }
+            }
+
+            function setSpeakingUIState(isSpeaking) {
+                pauseResumeBtn.disabled = !isSpeaking;
+                stopBtn.disabled = !isSpeaking;
+                if (!isSpeaking) {
+                    pauseResumeBtn.textContent = ' Pause';
+                    pauseResumeBtn.innerHTML = '<i class="fas fa-pause me-1"></i> Pause';
+                }
+            }
+
+            function speak() {
+                if (!supportsTTS) return;
+                
+                const text = (textArea.value || '').trim();
+                if (!text) {
+                    alert('Please enter some text to speak');
+                    return;
+                }
+
+                // Stop any current speech
+                synth.cancel();
+                
+                currentUtterance = new SpeechSynthesisUtterance(text);
+
+                const voiceIndex = parseInt(voiceSelect.value, 10);
+                if (voices[voiceIndex]) {
+                    currentUtterance.voice = voices[voiceIndex];
+                }
+
+                currentUtterance.rate = parseFloat(rate.value);
+                currentUtterance.pitch = parseFloat(pitch.value);
+                currentUtterance.volume = parseFloat(volume.value);
+
+                const langChoice = (langSelectTTS.value || '').trim();
+                if (langChoice) {
+                    currentUtterance.lang = langChoice;
+                }
+
+                currentUtterance.onstart = function () { 
+                    setSpeakingUIState(true); 
+                    speakBtn.disabled = true;
+                };
+                
+                currentUtterance.onend = function () { 
+                    setSpeakingUIState(false); 
+                    speakBtn.disabled = false;
+                };
+                
+                currentUtterance.onerror = function () { 
+                    setSpeakingUIState(false); 
+                    speakBtn.disabled = false;
+                };
+
+                synth.speak(currentUtterance);
+            }
+
+            speakBtn.addEventListener('click', speak);
+            
+            pauseResumeBtn.addEventListener('click', function () {
+                if (!supportsTTS) return;
+                
+                if (synth.speaking && !synth.paused) {
+                    synth.pause();
+                    pauseResumeBtn.innerHTML = '<i class="fas fa-play me-1"></i> Resume';
+                } else if (synth.paused) {
+                    synth.resume();
+                    pauseResumeBtn.innerHTML = '<i class="fas fa-pause me-1"></i> Pause';
+                }
+            });
+            
+            stopBtn.addEventListener('click', function () {
+                if (!supportsTTS) return;
+                synth.cancel();
+                setSpeakingUIState(false);
+                speakBtn.disabled = false;
+            });
+
+            // STT controls
+            const captionsBox = document.getElementById('captions');
+            const startBtn = document.getElementById('startCaptionsBtn');
+            const stopBtnSTT = document.getElementById('stopCaptionsBtn');
+            const clearBtn = document.getElementById('clearCaptionsBtn');
+            const sttSupport = document.getElementById('sttSupport');
+            const langSelectSTT = document.getElementById('langSelectSTT');
+            const interimToggle = document.getElementById('interimToggle');
+
+            let recognition = null;
+            let isRecognizing = false;
+            let finalTranscript = '';
+
+            function setCaptionsUIState(isActive) {
+                startBtn.disabled = isActive;
+                stopBtnSTT.disabled = !isActive;
+            }
+
+            if (supportsSTT) {
+                recognition = new Recognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = langSelectSTT.value;
+
+                recognition.onresult = function (event) {
+                    let interimTranscript = '';
+                    
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        const transcript = event.results[i][0].transcript;
+                        if (event.results[i].isFinal) {
+                            finalTranscript += transcript + ' ';
+                        } else if (interimToggle.checked) {
+                            interimTranscript += transcript;
+                        }
+                    }
+                    
+                    captionsBox.textContent = finalTranscript + interimTranscript;
+                    // Auto-scroll to bottom
+                    captionsBox.scrollTop = captionsBox.scrollHeight;
+                };
+
+                recognition.onerror = function (event) {
+                    console.error('Speech recognition error', event.error);
+                    stopRecognition();
+                };
+
+                recognition.onend = function () {
+                    stopRecognition();
+                };
+
+                function stopRecognition() {
+                    if (isRecognizing) {
+                        recognition.stop();
+                        isRecognizing = false;
+                        setCaptionsUIState(false);
+                    }
+                }
+
+                startBtn.addEventListener('click', function () {
+                    if (isRecognizing) return;
+                    
+                    recognition.lang = langSelectSTT.value;
+                    recognition.start();
+                    isRecognizing = true;
+                    setCaptionsUIState(true);
+                    captionsBox.textContent = 'Listening...';
+                });
+
+                stopBtnSTT.addEventListener('click', stopRecognition);
+                
+            } else {
+                sttSupport.classList.remove('d-none');
+                startBtn.disabled = true;
+                stopBtnSTT.disabled = true;
+            }
+
+            clearBtn.addEventListener('click', function () {
+                finalTranscript = '';
+                captionsBox.textContent = '';
+            });
+        })();
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+</body>
+</html>

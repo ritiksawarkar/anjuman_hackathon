@@ -1,4 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import Layout from './components/common/Layout';
+import { settingsService } from './services/apiService';
 
 const TextToSpeech = () => {
   // State variables
@@ -15,6 +17,36 @@ const TextToSpeech = () => {
   // Refs
   const synthRef = useRef(null);
   const utteranceRef = useRef(null);
+
+  // Auto-save settings when they change
+  useEffect(() => {
+    if (selectedVoice || rate !== 1 || pitch !== 1 || volume !== 1 || ttsLang) {
+      const timer = setTimeout(saveSettings, 1000); // Debounce save
+      return () => clearTimeout(timer);
+    }
+  }, [selectedVoice, rate, pitch, volume, ttsLang, saveSettings]);
+
+  // Load user settings on component mount
+  useEffect(() => {
+    const loadUserSettings = async () => {
+      try {
+        const userSettings = await settingsService.getSettings();
+        const { ttsSettings } = userSettings;
+        
+        if (ttsSettings) {
+          setSelectedVoice(ttsSettings.voice || '');
+          setRate(ttsSettings.rate || 1);
+          setPitch(ttsSettings.pitch || 1);
+          setVolume(ttsSettings.volume || 1);
+          setTtsLang(ttsSettings.language || '');
+        }
+      } catch (error) {
+        console.error('Failed to load user settings:', error);
+      }
+    };
+
+    loadUserSettings();
+  }, []);
 
   // Check browser support on component mount
   useEffect(() => {
@@ -42,6 +74,32 @@ const TextToSpeech = () => {
     }
   }, []);
   
+  // Save settings to backend
+  const saveSettings = useCallback(async () => {
+    try {
+      await settingsService.updateSettings({
+        ttsSettings: {
+          voice: selectedVoice,
+          rate,
+          pitch,
+          volume,
+          language: ttsLang
+        }
+      });
+    } catch (error) {
+      console.error('Failed to save TTS settings:', error);
+    }
+  }, [selectedVoice, rate, pitch, volume, ttsLang]);
+
+  // Update usage statistics
+  const updateUsageStats = useCallback(async () => {
+    try {
+      await settingsService.updateUsage('tts');
+    } catch (error) {
+      console.error('Failed to update usage stats:', error);
+    }
+  }, []);
+
   // TTS functions
   const speak = () => {
     if (!synthRef.current || !text.trim()) return;
@@ -74,6 +132,7 @@ const TextToSpeech = () => {
     utteranceRef.current.onstart = () => {
       setIsSpeaking(true);
       setIsPaused(false);
+      updateUsageStats(); // Track usage when speech starts
     };
     
     utteranceRef.current.onend = () => {
@@ -110,13 +169,14 @@ const TextToSpeech = () => {
   };
   
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-gray-50 min-h-screen">
-      <div className="grid grid-cols-1 gap-4">
-          
-          <div className="col-span-1 lg:col-span-1 xl:col-span-1">
-            <div className="bg-white border border-blue-100 rounded-lg shadow-md overflow-hidden">
-              <div className="p-3 bg-[#1976d2] text-white">
-                <div className="flex justify-between items-center">
+    <Layout>
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="grid grid-cols-1 gap-4">
+            
+            <div className="col-span-1 lg:col-span-1 xl:col-span-1">
+              <div className="bg-white border border-blue-100 rounded-lg shadow-md overflow-hidden">
+                <div className="p-3 bg-[#1976d2] text-white">
+                  <div className="flex justify-between items-center">
                   <h5 className="font-bold text-lg">Text → Speech</h5>
                   <span className="bg-[#e3f2fd] text-[#1976d2] rounded-full px-2 py-1 text-xs">
                     Speak your text aloud
@@ -255,7 +315,8 @@ const TextToSpeech = () => {
           </div>
         </div>
       </div>
-    );
+    </Layout>
+  );
 };
 
 export default TextToSpeech;

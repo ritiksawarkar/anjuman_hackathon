@@ -11,9 +11,7 @@ const createTransporter = () => {
   });
 };
 
-// Send OTP email
-
-};
+// ...existing code...
 
 // Send welcome email
 const sendWelcomeEmail = async (email, name) => {

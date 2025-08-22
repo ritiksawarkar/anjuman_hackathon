@@ -41,16 +41,7 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  otp: {
-    code: {
-      type: String,
-      default: null
-    },
-    expires: {
-      type: Date,
-      default: null
-    }
-  },
+  // ...existing code...
   resetPasswordToken: {
     type: String,
     default: null
@@ -82,32 +73,6 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// Generate OTP method
-userSchema.methods.generateOTP = function() {
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiry = new Date(Date.now() + (process.env.OTP_EXPIRY_MINUTES || 15) * 60 * 1000);
-  
-  this.otp = {
-    code: otp,
-    expires: expiry
-  };
-  
-  return otp;
-};
-
-// Verify OTP method
-userSchema.methods.verifyOTP = function(candidateOTP) {
-  if (!this.otp.code || !this.otp.expires) return false;
-  if (this.otp.expires < new Date()) return false;
-  return this.otp.code === candidateOTP;
-};
-
-// Clear OTP method
-userSchema.methods.clearOTP = function() {
-  this.otp = {
-    code: null,
-    expires: null
-  };
-};
+// ...existing code...
 
 module.exports = mongoose.model('User', userSchema);

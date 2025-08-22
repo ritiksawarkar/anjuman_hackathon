@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import Layout from './components/common/Layout';
+import { settingsService } from './services/apiService';
 
 const languages = [
   { code: "en", name: "English" },
@@ -27,28 +29,66 @@ const sampleText = {
 const MultiLanguage = () => {
   const [lang, setLang] = useState("en");
 
+  // Save language preference
+  const saveLanguagePreference = useCallback(async (selectedLang) => {
+    try {
+      await settingsService.updateSettings({
+        languageSettings: {
+          preferredLanguage: selectedLang
+        }
+      });
+    } catch (error) {
+      console.error('Failed to save language preference:', error);
+    }
+  }, []);
+
+  // Load user language preference
+  useEffect(() => {
+    const loadLanguagePreference = async () => {
+      try {
+        const userSettings = await settingsService.getSettings();
+        const { languageSettings } = userSettings;
+        
+        if (languageSettings && languageSettings.preferredLanguage) {
+          setLang(languageSettings.preferredLanguage);
+        }
+      } catch (error) {
+        console.error('Failed to load language preference:', error);
+      }
+    };
+
+    loadLanguagePreference();
+  }, []);
+
+  const handleLanguageChange = (newLang) => {
+    setLang(newLang);
+    saveLanguagePreference(newLang);
+  };
+
   return (
-    <div className="max-w-xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow p-6 mt-8">
-      <h2 className="text-xl font-bold mb-4 text-blue-700 dark:text-blue-300">Multi-language Support</h2>
-      <div className="flex gap-4 mb-4 flex-wrap">
-        <label className="block font-semibold">Select Language</label>
-        <select
-          className="p-2 border rounded dark:bg-gray-700 dark:text-white"
-          value={lang}
-          onChange={e => setLang(e.target.value)}
-        >
-          {languages.map(l => (
-            <option value={l.code} key={l.code}>{l.name}</option>
-          ))}
-        </select>
+    <Layout>
+      <div className="max-w-xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow p-6 mt-8">
+        <h2 className="text-xl font-bold mb-4 text-blue-700 dark:text-blue-300">Multi-language Support</h2>
+        <div className="flex gap-4 mb-4 flex-wrap">
+          <label className="block font-semibold">Select Language</label>
+          <select
+            className="p-2 border rounded dark:bg-gray-700 dark:text-white"
+            value={lang}
+            onChange={e => handleLanguageChange(e.target.value)}
+          >
+            {languages.map(l => (
+              <option value={l.code} key={l.code}>{l.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="border p-4 rounded bg-gray-50 dark:bg-gray-700 dark:text-white min-h-[60px]">
+          {sampleText[lang]}
+        </div>
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          Supports major Indian and global languages for accessibility.
+        </p>
       </div>
-      <div className="border p-4 rounded bg-gray-50 dark:bg-gray-700 dark:text-white min-h-[60px]">
-        {sampleText[lang]}
-      </div>
-      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-        Supports major Indian and global languages for accessibility.
-      </p>
-    </div>
+    </Layout>
   );
 };
 

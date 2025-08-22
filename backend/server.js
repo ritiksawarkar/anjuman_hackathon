@@ -10,6 +10,9 @@ dotenv.config();
 
 // Import routes
 const authRoutes = require('./routes/auth');
+const settingsRoutes = require('./routes/settings');
+const notesRoutes = require('./routes/notes');
+const quizRoutes = require('./routes/quiz');
 
 // Import passport config
 require('./config/passport');
@@ -58,6 +61,9 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/anjuman-h
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/notes', notesRoutes);
+app.use('/api/quiz', quizRoutes);
 
 // Test route
 app.get('/', (req, res) => {

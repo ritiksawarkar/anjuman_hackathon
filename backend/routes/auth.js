@@ -2,7 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const passport = require('passport');
 const User = require('../models/User');
-const { sendOTPEmail, sendWelcomeEmail } = require('../utils/emailService');
+const { sendWelcomeEmail } = require('../utils/emailService');
 const { generateToken } = require('../utils/jwt');
 const { authenticateToken } = require('../middleware/auth');
 const { admin, initializeFirebaseAdmin } = require('../config/firebase');
@@ -39,16 +39,7 @@ const validateLogin = [
     .withMessage('Password is required')
 ];
 
-const validateOTP = [
-  body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Please provide a valid email'),
-  body('otp')
-    .isLength({ min: 6, max: 6 })
-    .isNumeric()
-    .withMessage('OTP must be a 6-digit number')
-];
+// ...existing code...
 
 // Helper function to handle validation errors
 const handleValidationErrors = (req, res, next) => {
@@ -82,19 +73,10 @@ router.post('/signup', validateSignup, handleValidationErrors, async (req, res) 
       password
     });
 
-    // Generate and save OTP
-    const otp = user.generateOTP();
     await user.save();
-
-    // Send OTP email
-    const emailResult = await sendOTPEmail(email, otp, name);
-    
-    if (!emailResult.success) {
-      return res.status(500).json({ message: 'Failed to send OTP email' });
-    }
-
+    await sendWelcomeEmail(email, name);
     res.status(201).json({
-      message: 'User created successfully. Please verify your email with the OTP sent.',
+      message: 'User created successfully.',
       email: email
     });
 
@@ -104,60 +86,9 @@ router.post('/signup', validateSignup, handleValidationErrors, async (req, res) 
   }
 });
 
-// @route   POST /api/auth/verify-otp
-// @desc    Verify OTP and activate account
-// @access  Public
-router.post('/verify-otp', validateOTP, handleValidationErrors, async (req, res) => {
-  try {
-    const { email, otp } = req.body;
+// ...existing code...
 
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: 'User not found' });
-    }
-
-    if (user.isVerified) {
-      return res.status(400).json({ message: 'User is already verified' });
-    }
-
-    if (!user.verifyOTP(otp)) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' });
-    }
-
-    // Verify user and clear OTP
-    user.isVerified = true;
-    user.clearOTP();
-    await user.save();
-
-    // Send welcome email
-    await sendWelcomeEmail(email, user.name);
-
-    // Generate token
-    const token = generateToken(user._id);
-
-    res.json({
-      message: 'Email verified successfully',
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        isVerified: user.isVerified,
-        profilePicture: user.profilePicture
-      }
-    });
-
-  } catch (error) {
-    console.error('OTP verification error:', error);
-    res.status(500).json({ message: 'Server error during OTP verification' });
-  }
-});
-
-// @route   POST /api/auth/resend-otp
-// @desc    Resend OTP
-// @access  Public
-router.post('/resend-otp', [
-  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email')
+// ...existing code...
 ], handleValidationErrors, async (req, res) => {
   try {
     const { email } = req.body;

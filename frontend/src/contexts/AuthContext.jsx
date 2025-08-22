@@ -15,31 +15,13 @@ const authReducer = (state, action) => {
   switch (action.type) {
     case 'LOGIN_START':
     case 'SIGNUP_START':
-    case 'VERIFY_OTP_START':
-      return {
-        ...state,
-        loading: true,
-        error: null
-      };
+  // ...existing code...
     case 'LOGIN_SUCCESS':
     case 'SIGNUP_SUCCESS':
-    case 'VERIFY_OTP_SUCCESS':
-      return {
-        ...state,
-        loading: false,
-        isAuthenticated: true,
-        user: action.payload.user,
-        token: action.payload.token,
-        error: null
-      };
+  // ...existing code...
     case 'LOGIN_FAILURE':
     case 'SIGNUP_FAILURE':
-    case 'VERIFY_OTP_FAILURE':
-      return {
-        ...state,
-        loading: false,
-        error: action.payload
-      };
+  // ...existing code...
     case 'LOGOUT':
       return {
         ...state,
@@ -169,48 +151,7 @@ const AuthProvider = ({ children }) => {
     }
   };
 
-  // Verify OTP function
-  const verifyOTP = async (email, otp) => {
-    try {
-      dispatch({ type: 'VERIFY_OTP_START' });
-      
-      const response = await axios.post('/auth/verify-otp', {
-        email,
-        otp
-      });
-
-      const { token, user } = response.data;
-      
-      // Store token
-      localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-      dispatch({
-        type: 'VERIFY_OTP_SUCCESS',
-        payload: { user, token }
-      });
-
-      return { success: true, data: response.data };
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || 'OTP verification failed';
-      dispatch({
-        type: 'VERIFY_OTP_FAILURE',
-        payload: errorMessage
-      });
-      return { success: false, error: errorMessage };
-    }
-  };
-
-  // Resend OTP function
-  const resendOTP = async (email) => {
-    try {
-      const response = await axios.post('/auth/resend-otp', { email });
-      return { success: true, data: response.data };
-    } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Failed to resend OTP';
-      return { success: false, error: errorMessage };
-    }
-  };
+  // ...existing code...
 
   // Google login function with Firebase
   const loginWithGoogle = async () => {
@@ -277,8 +218,7 @@ const AuthProvider = ({ children }) => {
     ...state,
     login,
     signup,
-    verifyOTP,
-    resendOTP,
+  // ...existing code...
     loginWithGoogle,
     logout,
     clearError

@@ -32,7 +32,7 @@ const Login = () => {
     if (result.success) {
       navigate('/dashboard');
     } else if (result.needsVerification) {
-      navigate(`/verify-otp?email=${encodeURIComponent(result.email)}`);
+  // ...existing code...
     }
   };
 

@@ -7,7 +7,7 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 // Auth Components
 import Login from './components/auth/Login';
 import Signup from './components/auth/Signup';
-import OTPVerification from './components/auth/OTPVerification';
+// ...existing code...
 import AuthSuccess from './components/auth/AuthSuccess';
 
 // Main Components
@@ -38,7 +38,7 @@ function App() {
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
-            <Route path="/verify-otp" element={<OTPVerification />} />
+            {/* OTPVerification route removed */}
             <Route path="/auth/success" element={<AuthSuccess />} />
             
             {/* Protected Routes */}

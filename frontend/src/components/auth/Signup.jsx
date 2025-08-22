@@ -87,7 +87,7 @@ const Signup = () => {
     const result = await signup(formData.name, formData.email, formData.password);
     
     if (result.success) {
-      navigate(`/verify-otp?email=${encodeURIComponent(formData.email)}`);
+    navigate('/login');
     }
   };
 

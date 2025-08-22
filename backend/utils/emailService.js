@@ -2,7 +2,7 @@ const nodemailer = require('nodemailer');
 
 // Create transporter
 const createTransporter = () => {
-  return nodemailer.createTransporter({
+  return nodemailer.createTransport({
     service: 'gmail',
     auth: {
       user: process.env.EMAIL_USER,
@@ -12,59 +12,7 @@ const createTransporter = () => {
 };
 
 // Send OTP email
-const sendOTPEmail = async (email, otp, name) => {
-  try {
-    const transporter = createTransporter();
-    
-    const mailOptions = {
-      from: {
-        name: 'Accessibility Learning Tools',
-        address: process.env.EMAIL_USER
-      },
-      to: email,
-      subject: 'Your OTP Verification Code',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #1976d2; margin: 0;">Accessibility Learning Tools</h1>
-            <p style="color: #666; margin: 5px 0;">Your educational companion</p>
-          </div>
-          
-          <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h2 style="color: #333; margin-top: 0;">Hello ${name}!</h2>
-            <p style="color: #555; line-height: 1.6;">
-              Thank you for signing up! To complete your registration, please verify your email address using the OTP below:
-            </p>
-            
-            <div style="text-align: center; margin: 30px 0;">
-              <div style="background-color: #1976d2; color: white; font-size: 32px; font-weight: bold; padding: 20px; border-radius: 8px; letter-spacing: 5px; display: inline-block;">
-                ${otp}
-              </div>
-            </div>
-            
-            <p style="color: #555; line-height: 1.6;">
-              This OTP will expire in <strong>${process.env.OTP_EXPIRY_MINUTES || 15} minutes</strong>. 
-              If you didn't request this, please ignore this email.
-            </p>
-          </div>
-          
-          <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-            <p style="color: #999; font-size: 14px;">
-              © 2025 Accessibility Learning Tools. Making education accessible for everyone.
-            </p>
-          </div>
-        </div>
-      `
-    };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log('OTP Email sent:', info.messageId);
-    return { success: true, messageId: info.messageId };
-    
-  } catch (error) {
-    console.error('Email sending error:', error);
-    return { success: false, error: error.message };
-  }
 };
 
 // Send welcome email
@@ -138,6 +86,5 @@ const sendWelcomeEmail = async (email, name) => {
 };
 
 module.exports = {
-  sendOTPEmail,
   sendWelcomeEmail
 };

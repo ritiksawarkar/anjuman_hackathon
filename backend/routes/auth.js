@@ -1,0 +1,466 @@
+const express = require('express');
+const { body, validationResult } = require('express-validator');
+const passport = require('passport');
+const User = require('../models/User');
+const { sendOTPEmail, sendWelcomeEmail } = require('../utils/emailService');
+const { generateToken } = require('../utils/jwt');
+const { authenticateToken } = require('../middleware/auth');
+const { admin, initializeFirebaseAdmin } = require('../config/firebase');
+
+// Initialize Firebase Admin
+const firebaseAdmin = initializeFirebaseAdmin();
+
+const router = express.Router();
+
+// Validation middleware
+const validateSignup = [
+  body('name')
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage('Name must be between 2 and 50 characters'),
+  body('email')
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Please provide a valid email'),
+  body('password')
+    .isLength({ min: 6 })
+    .withMessage('Password must be at least 6 characters long')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage('Password must contain at least one lowercase letter, one uppercase letter, and one number')
+];
+
+const validateLogin = [
+  body('email')
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Please provide a valid email'),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required')
+];
+
+const validateOTP = [
+  body('email')
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Please provide a valid email'),
+  body('otp')
+    .isLength({ min: 6, max: 6 })
+    .isNumeric()
+    .withMessage('OTP must be a 6-digit number')
+];
+
+// Helper function to handle validation errors
+const handleValidationErrors = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      message: 'Validation failed',
+      errors: errors.array()
+    });
+  }
+  next();
+};
+
+// @route   POST /api/auth/signup
+// @desc    Register new user
+// @access  Public
+router.post('/signup', validateSignup, handleValidationErrors, async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User already exists with this email' });
+    }
+
+    // Create new user
+    const user = new User({
+      name,
+      email,
+      password
+    });
+
+    // Generate and save OTP
+    const otp = user.generateOTP();
+    await user.save();
+
+    // Send OTP email
+    const emailResult = await sendOTPEmail(email, otp, name);
+    
+    if (!emailResult.success) {
+      return res.status(500).json({ message: 'Failed to send OTP email' });
+    }
+
+    res.status(201).json({
+      message: 'User created successfully. Please verify your email with the OTP sent.',
+      email: email
+    });
+
+  } catch (error) {
+    console.error('Signup error:', error);
+    res.status(500).json({ message: 'Server error during signup' });
+  }
+});
+
+// @route   POST /api/auth/verify-otp
+// @desc    Verify OTP and activate account
+// @access  Public
+router.post('/verify-otp', validateOTP, handleValidationErrors, async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: 'User not found' });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ message: 'User is already verified' });
+    }
+
+    if (!user.verifyOTP(otp)) {
+      return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
+
+    // Verify user and clear OTP
+    user.isVerified = true;
+    user.clearOTP();
+    await user.save();
+
+    // Send welcome email
+    await sendWelcomeEmail(email, user.name);
+
+    // Generate token
+    const token = generateToken(user._id);
+
+    res.json({
+      message: 'Email verified successfully',
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        isVerified: user.isVerified,
+        profilePicture: user.profilePicture
+      }
+    });
+
+  } catch (error) {
+    console.error('OTP verification error:', error);
+    res.status(500).json({ message: 'Server error during OTP verification' });
+  }
+});
+
+// @route   POST /api/auth/resend-otp
+// @desc    Resend OTP
+// @access  Public
+router.post('/resend-otp', [
+  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email')
+], handleValidationErrors, async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: 'User not found' });
+    }
+
+    if (user.isVerified) {
+      return res.status(400).json({ message: 'User is already verified' });
+    }
+
+    // Generate and save new OTP
+    const otp = user.generateOTP();
+    await user.save();
+
+    // Send OTP email
+    const emailResult = await sendOTPEmail(email, otp, user.name);
+    
+    if (!emailResult.success) {
+      return res.status(500).json({ message: 'Failed to send OTP email' });
+    }
+
+    res.json({ message: 'OTP resent successfully' });
+
+  } catch (error) {
+    console.error('Resend OTP error:', error);
+    res.status(500).json({ message: 'Server error while resending OTP' });
+  }
+});
+
+// @route   POST /api/auth/login
+// @desc    Login user
+// @access  Public
+router.post('/login', validateLogin, handleValidationErrors, async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Find user
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid email or password' });
+    }
+
+    // Check password
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      return res.status(400).json({ message: 'Invalid email or password' });
+    }
+
+    // Check if user is verified
+    if (!user.isVerified) {
+      // Generate and send new OTP
+      const otp = user.generateOTP();
+      await user.save();
+      
+      await sendOTPEmail(email, otp, user.name);
+      
+      return res.status(400).json({ 
+        message: 'Please verify your email first. A new OTP has been sent.',
+        needsVerification: true,
+        email: email
+      });
+    }
+
+    // Generate token
+    const token = generateToken(user._id);
+
+    res.json({
+      message: 'Login successful',
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        isVerified: user.isVerified,
+        profilePicture: user.profilePicture
+      }
+    });
+
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ message: 'Server error during login' });
+  }
+});
+
+// @route   GET /api/auth/google
+// @desc    Google OAuth login
+// @access  Public
+router.get('/google', passport.authenticate('google', {
+  scope: ['profile', 'email']
+}));
+
+// @route   GET /api/auth/google/callback
+// @desc    Google OAuth callback
+// @access  Public
+router.get('/google/callback', 
+  passport.authenticate('google', { failureRedirect: '/login' }),
+  async (req, res) => {
+    try {
+      // Generate token
+      const token = generateToken(req.user._id);
+      
+      // Redirect to frontend with token
+      res.redirect(`${process.env.FRONTEND_URL}/auth/success?token=${token}`);
+    } catch (error) {
+      console.error('Google callback error:', error);
+      res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
+    }
+  }
+);
+
+// @route   POST /api/auth/logout
+// @desc    Logout user
+// @access  Private
+router.post('/logout', authenticateToken, (req, res) => {
+  try {
+    // For JWT tokens, logout is handled on the client side
+    // Here we can add token to a blacklist if needed
+    
+    // If using session with Google OAuth
+    req.logout((err) => {
+      if (err) {
+        console.error('Logout error:', err);
+      }
+    });
+    
+    res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ message: 'Server error during logout' });
+  }
+});
+
+// @route   GET /api/auth/me
+// @desc    Get current user
+// @access  Private
+router.get('/me', authenticateToken, (req, res) => {
+  res.json({
+    user: {
+      id: req.user._id,
+      name: req.user.name,
+      email: req.user.email,
+      isVerified: req.user.isVerified,
+      profilePicture: req.user.profilePicture
+    }
+  });
+});
+
+// @route   PUT /api/auth/update-profile
+// @desc    Update user profile
+// @access  Private
+router.put('/update-profile', authenticateToken, [
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage('Name must be between 2 and 50 characters')
+], handleValidationErrors, async (req, res) => {
+  try {
+    const { name } = req.body;
+    
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    if (name) user.name = name;
+    await user.save();
+    
+    res.json({
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        isVerified: user.isVerified,
+        profilePicture: user.profilePicture
+      }
+    });
+    
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ message: 'Server error while updating profile' });
+  }
+});
+
+// @route   POST /api/auth/firebase-login
+// @desc    Login with Firebase ID token
+// @access  Public
+router.post('/firebase-login', [
+  body('idToken')
+    .notEmpty()
+    .withMessage('Firebase ID token is required')
+], handleValidationErrors, async (req, res) => {
+  try {
+    // Check if Firebase Admin is initialized
+    if (!firebaseAdmin) {
+      return res.status(503).json({ 
+        message: 'Firebase authentication is not configured on the server' 
+      });
+    }
+
+    const { idToken } = req.body;
+    
+    // Verify Firebase ID token
+    const decodedToken = await firebaseAdmin.auth().verifyIdToken(idToken);
+    const { uid, email, name, picture } = decodedToken;
+    
+    if (!email) {
+      return res.status(400).json({ message: 'Email not found in Firebase token' });
+    }
+    
+    // Check if user exists in database
+    let user = await User.findOne({ email });
+    
+    if (!user) {
+      // Create new user from Firebase data
+      user = new User({
+        name: name || email.split('@')[0],
+        email,
+        firebaseUid: uid,
+        isVerified: true, // Firebase users are pre-verified
+        profilePicture: picture || null,
+        authProvider: 'firebase'
+      });
+      
+      await user.save();
+      
+      // Send welcome email
+      await sendWelcomeEmail(user.name, user.email);
+    } else {
+      // Update existing user with Firebase UID if not set
+      if (!user.firebaseUid) {
+        user.firebaseUid = uid;
+        user.authProvider = 'firebase';
+        await user.save();
+      }
+    }
+    
+    // Generate JWT token
+    const token = generateToken(user._id);
+    
+    res.json({
+      message: 'Firebase login successful',
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        isVerified: user.isVerified,
+        profilePicture: user.profilePicture
+      }
+    });
+    
+  } catch (error) {
+    console.error('Firebase login error:', error);
+    
+    if (error.code === 'auth/id-token-expired') {
+      return res.status(401).json({ message: 'Firebase token expired' });
+    }
+    if (error.code === 'auth/invalid-id-token') {
+      return res.status(401).json({ message: 'Invalid Firebase token' });
+    }
+    
+    res.status(500).json({ message: 'Server error during Firebase login' });
+  }
+});
+
+// @route   POST /api/auth/test-email
+// @desc    Test email sending functionality
+// @access  Public
+router.post('/test-email', async (req, res) => {
+  try {
+    const { email, name } = req.body;
+    
+    if (!email || !name) {
+      return res.status(400).json({ message: 'Email and name are required' });
+    }
+
+    // Generate test OTP
+    const testOTP = '123456';
+    
+    // Send test OTP email
+    const emailResult = await sendOTPEmail(email, testOTP, name);
+    
+    if (emailResult.success) {
+      res.json({ 
+        message: 'Test email sent successfully',
+        messageId: emailResult.messageId
+      });
+    } else {
+      res.status(500).json({ 
+        message: 'Failed to send test email',
+        error: emailResult.error
+      });
+    }
+
+  } catch (error) {
+    console.error('Test email error:', error);
+    res.status(500).json({ message: 'Server error during test email' });
+  }
+});
+
+module.exports = router;
